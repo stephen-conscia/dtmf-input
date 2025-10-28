@@ -66,7 +66,7 @@ export class DtmfInput extends HTMLElement {
           background: var(--button-bg-hover, #2563eb);
         }
 
-        :host([darkmode]) input {
+        :host(.darkmode) input {
           --input-bg: #333;
           --input-fg: #eee;
           background: var(--input-bg);
@@ -74,7 +74,7 @@ export class DtmfInput extends HTMLElement {
           border-color: #555;
         }
 
-        :host([darkmode]) button {
+        :host(.darkmode) button {
           --button-bg: #2563eb;
           --button-bg-hover: #1d4ed8;
           --button-fg: white;
@@ -98,18 +98,23 @@ export class DtmfInput extends HTMLElement {
     this.input = this.shadowRoot!.querySelector('input')!;
     this.pasteButton = this.shadowRoot!.querySelector('[data-role="paste"]')!;
 
-    this.pasteButton.addEventListener("click", () => {
+    this.pasteButton.addEventListener("click", async () => {
       console.log("paste button clicked");
 
       if (!navigator.clipboard?.readText) {
         alert("Please accept permissions to access clipboard");
         return;
       }
-      navigator.clipboard
-        .readText()
-        .then((clipText) => (clipText.length && (this.input.value = clipText)))
-        .catch(error => console.log("error", error));
 
+      try {
+        const clipText = await navigator.clipboard.readText();
+        if (clipText?.length) {
+          this.input.value = clipText.replace(/[^0-9*#]/g, '');
+        }
+      } catch (err) {
+        console.warn("Clipboard access error:", err);
+        alert("Unable to read clipboard. Please paste manually (Ctrl+V).");
+      }
     });
 
     this.input.addEventListener("input", () => {
@@ -153,10 +158,13 @@ export class DtmfInput extends HTMLElement {
     console.log(`${name} has changed from ${oldValue} to ${newValue}.`);
     if (name === "darkmode") {
       if (this.hasAttribute("darkmode")) {
+        console.log("add darkmode");
         this.classList.add("darkmode");
       } else {
         this.classList.remove("darkmode");
+        console.log("remove darkmode");
       }
+      console.log("this =>", this);
     }
   }
 }
