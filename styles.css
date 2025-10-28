@@ -1,0 +1,56 @@
+.dtmf-form {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.dtmf-input {
+  width: 12ch;
+  font-size: 1rem;
+  padding: 0.4em 0.6em;
+  border: 1px solid currentColor;
+  border-radius: 0.4em;
+  outline: none;
+  background: inherit;
+  color: inherit;
+  max-height: 64px;
+  box-sizing: border-box;
+}
+
+.darkmode .dtmf-input {
+  background: inherit;
+  color: inherit;
+}
+
+.dtmf-input:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.3);
+}
+
+/* Button */
+.dtmf-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.4em 0.6em;
+  border: none;
+  border-radius: 0.4em;
+  font-size: 1rem;
+  cursor: pointer;
+  background: #3b82f6;
+  color: white;
+  max-height: 64px;
+  transition: background 0.25s;
+}
+
+.dtmf-button:hover {
+  background: #2563eb;
+}
+
+.dtmf-form[darkmode] .dtmf-button {
+  background: #2563eb;
+}
+
+.dtmf-form[darkmode] .dtmf-button:hover {
+  background: #1d4ed8;
+}
