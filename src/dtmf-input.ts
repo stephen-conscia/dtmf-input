@@ -165,7 +165,7 @@ export class DtmfInput extends HTMLElement {
 
       try {
         const text = await navigator.clipboard.readText();
-        const filtered = text.replace(/[^0-9*#]/g, '').slice(0, 10);
+        const filtered = text.replace(/[^0-9*#]/g, '');
         this.input.value = filtered;
         this.input.dispatchEvent(new Event('input'));
       } catch (err) {
@@ -176,7 +176,7 @@ export class DtmfInput extends HTMLElement {
 
     // Filter input in real-time
     this.input.addEventListener("input", () => {
-      const filtered = this.input.value.replace(/[^0-9*#]/g, '').slice(0, 10);
+      const filtered = this.input.value.replace(/[^0-9*#]/g, '');
       if (this.input.value !== filtered) {
         this.input.value = filtered;
       }
