@@ -8,12 +8,13 @@
 </head>
 
 <body>
-  <dtmf-input class="darkmode" id="form" darkmode></dtmf-input>
+  <dtmf-input darkmode="true"></dtmf-input>
+
 
   <script>
     const dtmfInput = document.querySelector("dtmf-input");
     setTimeout(function () {
-      dtmfInput.removeAttribute("darkmode");
+      dtmfInput.setAttribute('darkmode', 'false'); // Disable dark
     }, 6000);
 
   </script>
