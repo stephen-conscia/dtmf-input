@@ -1,7 +1,13 @@
+import { Desktop } from "@wxcc-desktop/sdk"
+
+//Creating a custom logger
+const logger = Desktop.logger.createLogger('dtmf-input-logger');
+
 export class DtmfInput extends HTMLElement {
   private input!: HTMLInputElement;
   private form!: HTMLFormElement;
   private pasteButton!: HTMLButtonElement;
+  private _interactionId: null | string = null;
   private _active = false;
 
   static get observedAttributes() {
@@ -68,7 +74,7 @@ export class DtmfInput extends HTMLElement {
           color: var(--input-fg);
           box-sizing: border-box;
           transition: border-color 0.2s, box-shadow 0.2s;
-          max-height: 38px;
+          height: 38px;
         }
 
         input:focus {
@@ -105,17 +111,20 @@ export class DtmfInput extends HTMLElement {
           transform: translateY(1px);
         }
 
-        /* Icon Button - Gray / Secondary */
         .button--icon {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
           width: 38px;
           height: 38px;
-          padding: 0.4em;
+          padding: 0; /* remove extra padding */
           background: var(--icon-bg);
           color: var(--icon-fg);
           border: 1px solid var(--icon-border);
           border-radius: 0.4em;
           aspect-ratio: 1;
-          transition: all 0.2s ease;
+          cursor: pointer;
+          transition: background 0.2s ease, border-color 0.2s ease;
         }
 
         .button--icon:hover {
@@ -124,8 +133,10 @@ export class DtmfInput extends HTMLElement {
         }
 
         .button--icon:active {
-          background: var(--icon-border);
+          background: var(--icon-hover-bg); /* same as hover for better contrast */
+          border-color: var(--icon-fg);
         }
+
 
         .button__icon {
           width: 1.25em;
@@ -139,19 +150,20 @@ export class DtmfInput extends HTMLElement {
         }
       </style>
 
-      <form>
-        <button type="button" class="button button--icon" data-role="paste" aria-label="Paste from clipboard">
+      <form role="form">
+        <button type="button" class="button button--icon" data-role="paste" title="Paste from clipboard" aria-label="Paste from clipboard">
           <svg xmlns="http://www.w3.org/2000/svg" class="button__icon" viewBox="0 -960 960 960">
             <path d="m720-120-56-57 63-63H480v-80h247l-63-64 56-56 160 160-160 160Zm120-400h-80v-240h-80v120H280v-120h-80v560h200v80H200q-33 0-56.5-23.5T120-200v-560q0-33 23.5-56.5T200-840h167q11-35 43-57.5t70-22.5q40 0 71.5 22.5T594-840h166q33 0 56.5 23.5T840-760v240ZM480-760q17 0 28.5-11.5T520-800q0-17-11.5-28.5T480-840q-17 0-28.5 11.5T440-800q0 17 11.5 28.5T480-760Z" />
           </svg>
         </button>
         <input type="text" placeholder="Enter DTMF" maxlength="10" aria-label="DTMF Input" />
-        <button type="submit" class="button button--submit">Submit</button>
+        <button type="submit" class="button button--submit" title="Submit DTMF" aria-label="Submit DTMF">Submit</button>
       </form>
     `;
   }
 
   connectedCallback() {
+    Desktop.config.init({ widgetName: "dtmf-input", widgetProvider: "Conscia" });
     this.form = this.shadowRoot!.querySelector('form')!;
     this.input = this.shadowRoot!.querySelector('input')!;
     this.pasteButton = this.shadowRoot!.querySelector('[data-role="paste"]')!;
@@ -169,7 +181,7 @@ export class DtmfInput extends HTMLElement {
         this.input.value = filtered;
         this.input.dispatchEvent(new Event('input'));
       } catch (err) {
-        console.warn("Clipboard error:", err);
+        logger.warn("Clipboard error:", err);
         alert("Failed to paste. Try Ctrl+V.");
       }
     });
@@ -187,18 +199,23 @@ export class DtmfInput extends HTMLElement {
       e.preventDefault();
       const value = this.input.value.trim();
       if (value) {
-        console.log("value", value);
+        logger.info("sending DTMF values", value);
+        Desktop.agentContact.sendDtmf(value);
       }
       this.input.value = '';
     });
 
-    setTimeout(() => this.show(), 500);
+    this.webexEventListeners();
+  }
+
+  public get active() {
+    return this._active;
   }
 
   show() {
     this._active = true;
-    requestAnimationFrame(() => this.form.classList.add('active'));
-    setTimeout(() => this.input.focus(), 150);
+    this.form.classList.add('active');
+    this.input.focus();
   }
 
   hide() {
@@ -206,12 +223,33 @@ export class DtmfInput extends HTMLElement {
     this.form.classList.remove('active');
   }
 
-  get active() {
-    return this._active;
+
+  webexEventListeners() {
+    Desktop.agentContact.addEventListener("eAgentContactAssigned", (message) => {
+      //logger.info('eAgentContactAssigned', JSON.stringify(message));
+      logger.info("media type is:", message.data.interaction.mediaType);
+      logger.info("interactionId", message.data.interaction.interactionId);
+      if (message.data.interaction.mediaType === "telephony" && !this._interactionId) {
+        this._interactionId = message.data.interactionId;
+        this.show();
+        logger.info("New voice interaction. Showing the widget");
+      }
+    });
+
+    Desktop.agentContact.addEventListener("eAgentContactEnded", (message) => {
+      //logger.info('eAgentContactEnded', JSON.stringify(message));
+      logger.info("media type is:", message.data.interaction.mediaType);
+      logger.info("interactionId", message.data.interaction.interactionId);
+      if (message.data.interactionId === this._interactionId) {
+        this._interactionId = null;
+        this.hide();
+        logger.info("Tracked interaction closed. Hiding the widget");
+      }
+    });
   }
 
   // Handle darkmode="true" | "false"
-  attributeChangedCallback(name: string, oldValue: string, newValue: string) {
+  attributeChangedCallback(name: string, _: string, newValue: string) {
     if (name === 'darkmode') {
       const isDark = newValue === 'true';
       if (isDark) {
