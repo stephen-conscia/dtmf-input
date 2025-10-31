@@ -7,6 +7,7 @@ export class DtmfInput extends HTMLElement {
   private input!: HTMLInputElement;
   private form!: HTMLFormElement;
   private pasteButton!: HTMLButtonElement;
+  private submitButton!: HTMLButtonElement;
   private _interactionId: null | string = null;
   private _active = false;
 
@@ -20,31 +21,42 @@ export class DtmfInput extends HTMLElement {
     shadow.innerHTML = `
       <style>
         :host {
-          /* Light mode defaults */
-          --input-bg: #f8f8f8;
+          --input-bg: #E8EEFE;
           --input-fg: #222;
-          --input-border: #d1d5db;
+          --input-border: #b0b2b6;  /* was #a8aaad */
+          --icon-border: #b0b2b6;   /* was #a8aaad */
           --button-bg: #3b82f6;
           --button-fg: white;
           --button-hover: #2563eb;
-          --icon-bg: transparent;
+          --icon-bg: #ECF3FE;
+          --icon-hover-bg: #d4e0f8;  /* slightly darker than #ECF3FE */
           --icon-fg: #6b7280;
-          --icon-border: #d1d5db;
-          --icon-hover-bg: #f3f4f6;
+          --button-success-bg: #22c55e;
+          --button-success-text: #FFFFFF;
+          --button-success-hover: #16a34a;
         }
 
         /* Dark mode - activated via .dark class */
         :host(.dark) {
-          --input-bg: #1f2937;
+          --input-bg: #313853;
           --input-fg: #f1f5f9;
           --input-border: #4b5563;
-          --button-bg: #3b82f6;
-          --button-fg: white;
-          --button-hover: #2563eb;
+
+          /* Slightly muted button colors for dark mode */
+          --button-bg: #2563eb;          /* was #3b82f6, a bit darker */
+          --button-fg: #f1f5f9;          /* lighter text for contrast */
+          --button-hover: #1d4ed8;       /* slightly darker on hover */
+
           --icon-bg: transparent;
           --icon-fg: #94a3b8;
           --icon-border: #64748b;
-          --icon-hover-bg: #334155;
+
+          /* icon hover a bit lighter/darker for subtle effect */
+          --icon-hover-bg: #2c374e;      /* was #334155, slightly softer */
+
+          /* Success button colors tuned for dark mode */
+          --button-success-bg: #22c55e;  /* slightly darker green */
+          --button-success-hover: #16a34a;
         }
 
         form {
@@ -86,6 +98,7 @@ export class DtmfInput extends HTMLElement {
           display: inline-flex;
           align-items: center;
           justify-content: center;
+          gap: 0.2em;
           padding: 0.4em 0.75em;
           border: none;
           border-radius: 0.4em;
@@ -93,18 +106,37 @@ export class DtmfInput extends HTMLElement {
           font-weight: 500;
           cursor: pointer;
           transition: all 0.2s ease;
-          min-height: 38px;
+          height: 38px;
         }
 
         /* Submit Button - Primary */
         .button--submit {
           background: var(--button-bg);
           color: var(--button-fg);
-          font-weight: 600;
+          font-weight: 500;
+          width: 6rem;
         }
 
         .button--submit:hover {
           background: var(--button-hover);
+        }
+
+        .button--success {
+          background: var(--button-success-bg);
+          color: var(--button-success-text);
+        }
+
+        .button--submit.button--success:hover {
+          background: var(--button-success-hover);
+        }
+
+        .button--submit:not(:disabled):active {
+           transform: translateY(1px);
+         }
+
+        .button--submit:disabled {
+          cursor: not-allowed;
+          pointer-events: none;
         }
 
         .button--submit:active {
@@ -117,7 +149,7 @@ export class DtmfInput extends HTMLElement {
           justify-content: center;
           width: 38px;
           height: 38px;
-          padding: 0; /* remove extra padding */
+          padding: 0.4em;
           background: var(--icon-bg);
           color: var(--icon-fg);
           border: 1px solid var(--icon-border);
@@ -166,6 +198,7 @@ export class DtmfInput extends HTMLElement {
     Desktop.config.init({ widgetName: "dtmf-input", widgetProvider: "Conscia" });
     this.form = this.shadowRoot!.querySelector('form')!;
     this.input = this.shadowRoot!.querySelector('input')!;
+    this.submitButton = this.shadowRoot!.querySelector('button[type="submit"]')!;
     this.pasteButton = this.shadowRoot!.querySelector('[data-role="paste"]')!;
 
     // Paste from clipboard
@@ -199,6 +232,21 @@ export class DtmfInput extends HTMLElement {
       e.preventDefault();
       const value = this.input.value.trim();
       if (value) {
+        this.submitButton.disabled = true;
+        this.submitButton.classList.add("button--success");
+        this.submitButton.innerHTML = `
+          <span>Sent</span>
+          <svg xmlns="http://www.w3.org/2000/svg" height="20px" viewBox="0 -960 960 960" width="20px" class=
+"button__icon">
+            <path d="M382-240 154-468l57-57 171 171 367-367 57 57-424 424Z"
+                  fill="currentColor" stroke="currentColor" stroke-width="60" />
+          </svg>
+          `;
+        setTimeout(() => {
+          this.submitButton.disabled = false;
+          this.submitButton.classList.remove("button--success");
+          this.submitButton.textContent = "Submit";
+        }, 2000);
         logger.info("sending DTMF values", value);
         Desktop.agentContact.sendDtmf(value);
       }
