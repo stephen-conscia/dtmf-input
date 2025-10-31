@@ -3,10 +3,6 @@ node_modules/
 
 logs/
 
-# Build output (Vite / Rollup)
-dist/
-build/
-
 # TypeScript cache and output
 *.tsbuildinfo
 *.log
