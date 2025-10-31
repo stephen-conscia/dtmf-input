@@ -213,6 +213,7 @@ export class DtmfInput extends HTMLElement {
         const filtered = text.replace(/[^0-9*#]/g, '');
         this.input.value = filtered;
         this.input.dispatchEvent(new Event('input'));
+        this.input.focus();
       } catch (err) {
         logger.warn("Clipboard error:", err);
         alert("Failed to paste. Try Ctrl+V.");
