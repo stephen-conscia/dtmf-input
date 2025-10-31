@@ -239,8 +239,7 @@ export class DtmfInput extends HTMLElement {
           <span>Sent</span>
           <svg xmlns="http://www.w3.org/2000/svg" height="20px" viewBox="0 -960 960 960" width="20px" class=
 "button__icon">
-            <path d="M382-240 154-468l57-57 171 171 367-367 57 57-424 424Z"
-                  fill="currentColor" stroke="currentColor" stroke-width="60" />
+            <path d="M382-240 154-468l57-57 171 171 367-367 57 57-424 424Z" fill="currentColor" />
           </svg>
           `;
         setTimeout(() => {
