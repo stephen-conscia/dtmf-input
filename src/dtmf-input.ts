@@ -1,17 +1,14 @@
-import { Desktop } from "@wxcc-desktop/sdk"
+import { Desktop } from "@wxcc-desktop/sdk";
 
-//Creating a custom logger
-const logger = Desktop.logger.createLogger('dtmf-input-logger');
+//const dtmfLogger = Desktop.logger.createLogger('dtmf-input-logger');
 
-export class DtmfInput extends HTMLElement {
+class DtmfInput extends HTMLElement {
+  private container!: HTMLDivElement;
   private input!: HTMLInputElement;
-  private form!: HTMLFormElement;
   private pasteButton!: HTMLButtonElement;
   private submitButton!: HTMLButtonElement;
-  private _interactionId: null | string = null;
-  private _active = false;
 
-  static get observedAttributes() {
+  static get observedAttributes(): string[] {
     return ['darkmode'];
   }
 
@@ -21,72 +18,52 @@ export class DtmfInput extends HTMLElement {
     shadow.innerHTML = `
       <style>
         :host {
-          --input-bg: #E8EEFE;
-          --input-fg: #222;
-          --input-border: #b0b2b6;  /* was #a8aaad */
-          --icon-border: #b0b2b6;   /* was #a8aaad */
-          --button-bg: #3b82f6;
-          --button-fg: white;
-          --button-hover: #2563eb;
-          --icon-bg: #ECF3FE;
-          --icon-hover-bg: #d4e0f8;  /* slightly darker than #ECF3FE */
-          --icon-fg: #6b7280;
-          --button-success-bg: #22c55e;
-          --button-success-text: #FFFFFF;
-          --button-success-hover: #16a34a;
+          display: block;
+          width: 100%;
+          height: 100%;
+          font-family: sans-serif;
         }
 
-        /* Dark mode - activated via .dark class */
-        :host(.dark) {
-          --input-bg: #313853;
-          --input-fg: #f1f5f9;
-          --input-border: #4b5563;
+        .container {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          height: 100%;
+          gap: 10px;
+          padding: 1rem;
+          box-sizing: border-box;
+          background: #f0f4f8;
+          color: #222;
+        }
 
-          /* Slightly muted button colors for dark mode */
-          --button-bg: #2563eb;          /* was #3b82f6, a bit darker */
-          --button-fg: #f1f5f9;          /* lighter text for contrast */
-          --button-hover: #1d4ed8;       /* slightly darker on hover */
+        .container.darkmode {
+          background: #1f2937;
+          color: #f1f5f9;
+        }
 
-          --icon-bg: transparent;
-          --icon-fg: #94a3b8;
-          --icon-border: #64748b;
-
-          /* icon hover a bit lighter/darker for subtle effect */
-          --icon-hover-bg: #2c374e;      /* was #334155, slightly softer */
-
-          /* Success button colors tuned for dark mode */
-          --button-success-bg: #22c55e;  /* slightly darker green */
-          --button-success-hover: #16a34a;
+        .title {
+          font-size: 1.2rem;
+          font-weight: bold;
         }
 
         form {
           display: flex;
-          align-items: center;
-          gap: 0.25rem;
-          transition: opacity 0.3s ease, transform 0.3s ease;
-          opacity: 0;
-          transform: translateY(-10px);
-          pointer-events: none;
-        }
-
-        form.active {
-          opacity: 1;
-          transform: translateY(0);
-          pointer-events: auto;
+          gap: 0.5rem;
         }
 
         input {
-          width: 12ch;
+          padding: 0.5em 0.75em;
           font-size: 1rem;
-          padding: 0.4em 0.6em;
-          border: 1px solid var(--input-border);
+          border: 1px solid #b0b2b6;
           border-radius: 0.4em;
           outline: none;
-          background: var(--input-bg);
-          color: var(--input-fg);
-          box-sizing: border-box;
-          transition: border-color 0.2s, box-shadow 0.2s;
-          height: 38px;
+        }
+
+        .container.darkmode input {
+          background: #374151;
+          color: #f1f5f9;
+          border-color: #4b5563;
         }
 
         input:focus {
@@ -98,215 +75,107 @@ export class DtmfInput extends HTMLElement {
           display: inline-flex;
           align-items: center;
           justify-content: center;
-          gap: 0.2em;
-          padding: 0.4em 0.75em;
+          padding: 0.5em 1em;
+          font-size: 1rem;
           border: none;
           border-radius: 0.4em;
-          font-size: 1rem;
-          font-weight: 500;
           cursor: pointer;
-          transition: all 0.2s ease;
-          height: 38px;
+          transition: background 0.2s;
         }
 
-        /* Submit Button - Primary */
-        .button--submit {
-          background: var(--button-bg);
-          color: var(--button-fg);
-          font-weight: 500;
-          width: 6rem;
+        .button.submit {
+          background-color: #3b82f6;
+          color: white;
         }
 
-        .button--submit:hover {
-          background: var(--button-hover);
+        .button.submit:hover {
+          background-color: #2563eb;
         }
 
-        .button--success {
-          background: var(--button-success-bg);
-          color: var(--button-success-text);
-        }
-
-        .button--submit.button--success:hover {
-          background: var(--button-success-hover);
-        }
-
-        .button--submit:not(:disabled):active {
-           transform: translateY(1px);
-         }
-
-        .button--submit:disabled {
-          cursor: not-allowed;
-          pointer-events: none;
-        }
-
-        .button--submit:active {
-          transform: translateY(1px);
-        }
-
-        .button--icon {
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
+        .button.paste {
+          background-color: #ecf3fe;
+          color: #222;
           width: 38px;
           height: 38px;
-          padding: 0.4em;
-          background: var(--icon-bg);
-          color: var(--icon-fg);
-          border: 1px solid var(--icon-border);
-          border-radius: 0.4em;
-          aspect-ratio: 1;
-          cursor: pointer;
-          transition: background 0.2s ease, border-color 0.2s ease;
+          padding: 0;
         }
 
-        .button--icon:hover {
-          background: var(--icon-hover-bg);
-          border-color: var(--icon-fg);
+        .container.darkmode .button.paste {
+          background-color: #2c374e;
+          color: #f1f5f9;
         }
 
-        .button--icon:active {
-          background: var(--icon-hover-bg); /* same as hover for better contrast */
-          border-color: var(--icon-fg);
+        .button.paste svg {
+          width: 24px;
+          height: 24px;
         }
 
-
-        .button__icon {
-          width: 1.25em;
-          height: 1.25em;
-          fill: currentColor;
+        .button.paste:hover {
+          background-color: #d4e0f8;
         }
 
-        /* Dark mode input focus glow */
-        :host(.dark) input:focus {
-          box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.3);
+        .container.darkmode .button.paste:hover {
+          background-color: #334155;
         }
       </style>
 
-      <form role="form">
-        <button type="button" class="button button--icon" data-role="paste" title="Paste from clipboard" aria-label="Paste from clipboard">
-          <svg xmlns="http://www.w3.org/2000/svg" class="button__icon" viewBox="0 -960 960 960">
-            <path d="m720-120-56-57 63-63H480v-80h247l-63-64 56-56 160 160-160 160Zm120-400h-80v-240h-80v120H280v-120h-80v560h200v80H200q-33 0-56.5-23.5T120-200v-560q0-33 23.5-56.5T200-840h167q11-35 43-57.5t70-22.5q40 0 71.5 22.5T594-840h166q33 0 56.5 23.5T840-760v240ZM480-760q17 0 28.5-11.5T520-800q0-17-11.5-28.5T480-840q-17 0-28.5 11.5T440-800q0 17 11.5 28.5T480-760Z" />
-          </svg>
-        </button>
-        <input type="text" placeholder="Enter DTMF" maxlength="10" aria-label="DTMF Input" />
-        <button type="submit" class="button button--submit" title="Submit DTMF" aria-label="Submit DTMF">Submit</button>
-      </form>
+      <div class="container">
+        <div class="title">Input DTMF</div>
+        <form>
+          <button type="button" class="button paste" title="Paste">
+            <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor">
+              <path d="m720-120-56-57 63-63H480v-80h247l-63-64 56-56 160 160-160 160Zm120-400h-80v-240h-80v120H280v-120h-80v560h200v80H200q-33 0-56.5-23.5T120-200v-560q0-33 23.5-56.5T200-840h167q11-35 43-57.5t70-22.5q40 0 71.5 22.5T594-840h166q33 0 56.5 23.5T840-760v240ZM480-760q17 0 28.5-11.5T520-800q0-17-11.5-28.5T480-840q-17 0-28.5 11.5T440-800q0 17 11.5 28.5T480-760Z"/>
+            </svg>
+          </button>
+          <input type="text" placeholder="Enter DTMF" maxlength="10"/>
+          <button type="submit" class="button submit">Submit</button>
+        </form>
+      </div>
     `;
+
+    // dtmfLogger.info("Constructor");
   }
 
   connectedCallback() {
-    Desktop.config.init({ widgetName: "dtmf-input", widgetProvider: "Conscia" });
-    this.form = this.shadowRoot!.querySelector('form')!;
+    //dtmfLogger.info("Connected Callback");
+    //Desktop.config.init({ widgetName: "dtmf-input", widgetProvider: "Conscia" });
+    this.container = this.shadowRoot!.querySelector('.container')!;
     this.input = this.shadowRoot!.querySelector('input')!;
-    this.submitButton = this.shadowRoot!.querySelector('button[type="submit"]')!;
-    this.pasteButton = this.shadowRoot!.querySelector('[data-role="paste"]')!;
+    this.pasteButton = this.shadowRoot!.querySelector('.button.paste')!;
+    this.submitButton = this.shadowRoot!.querySelector('.button.submit')!;
 
-    // Paste from clipboard
-    this.pasteButton.addEventListener("click", async () => {
-      if (!navigator.clipboard?.readText) {
-        alert("Clipboard access not supported. Please paste manually.");
-        return;
-      }
-
-      try {
-        const text = await navigator.clipboard.readText();
-        const filtered = text.replace(/[^0-9*#]/g, '');
-        this.input.value = filtered;
-        this.input.dispatchEvent(new Event('input'));
-        this.input.focus();
-      } catch (err) {
-        logger.warn("Clipboard error:", err);
-        alert("Failed to paste. Try Ctrl+V.");
-      }
+    // Paste button event
+    this.pasteButton.addEventListener('click', async () => {
+      if (!navigator.clipboard?.readText) return;
+      const text = await navigator.clipboard.readText();
+      this.input.value = text.replace(/[^0-9*#]/g, '');
+      this.input.focus();
     });
 
-    // Filter input in real-time
-    this.input.addEventListener("input", () => {
-      const filtered = this.input.value.replace(/[^0-9*#]/g, '');
-      if (this.input.value !== filtered) {
-        this.input.value = filtered;
-      }
-    });
-
-    // Handle form submit
-    this.form.addEventListener('submit', (e) => {
+    // Submit button event
+    this.submitButton.addEventListener('click', (e: Event) => {
       e.preventDefault();
       const value = this.input.value.trim();
-      if (value) {
-        this.submitButton.disabled = true;
-        this.submitButton.classList.add("button--success");
-        this.submitButton.innerHTML = `
-          <span>Sent</span>
-          <svg xmlns="http://www.w3.org/2000/svg" height="20px" viewBox="0 -960 960 960" width="20px" class=
-"button__icon">
-            <path d="M382-240 154-468l57-57 171 171 367-367 57 57-424 424Z" fill="currentColor" />
-          </svg>
-          `;
-        setTimeout(() => {
-          this.submitButton.disabled = false;
-          this.submitButton.classList.remove("button--success");
-          this.submitButton.textContent = "Submit";
-        }, 2000);
-        logger.info("sending DTMF values", value);
-        Desktop.agentContact.sendDtmf(value);
-      }
+      if (value) alert(value); //Desktop.agentContact.sendDtmf(value);
       this.input.value = '';
     });
 
-    this.webexEventListeners();
-  }
-
-  public get active() {
-    return this._active;
-  }
-
-  show() {
-    this._active = true;
-    this.form.classList.add('active');
-    this.input.focus();
-  }
-
-  hide() {
-    this._active = false;
-    this.form.classList.remove('active');
-  }
-
-
-  webexEventListeners() {
-    Desktop.agentContact.addEventListener("eAgentContactAssigned", (message) => {
-      //logger.info('eAgentContactAssigned', JSON.stringify(message));
-      logger.info("media type is:", message.data.interaction.mediaType);
-      logger.info("interactionId", message.data.interaction.interactionId);
-      if (message.data.interaction.mediaType === "telephony" && !this._interactionId) {
-        this._interactionId = message.data.interactionId;
-        this.show();
-        logger.info("New voice interaction. Showing the widget");
-      }
-    });
-
-    Desktop.agentContact.addEventListener("eAgentContactEnded", (message) => {
-      //logger.info('eAgentContactEnded', JSON.stringify(message));
-      logger.info("media type is:", message.data.interaction.mediaType);
-      logger.info("interactionId", message.data.interaction.interactionId);
-      if (message.data.interactionId === this._interactionId) {
-        this._interactionId = null;
-        this.hide();
-        logger.info("Tracked interaction closed. Hiding the widget");
-      }
+    // Restrict input to 0-9, *, #
+    this.input.addEventListener('input', () => {
+      this.input.value = this.input.value.replace(/[^0-9*#]/g, '');
     });
   }
 
-  // Handle darkmode="true" | "false"
   attributeChangedCallback(name: string, _: string, newValue: string) {
     if (name === 'darkmode') {
-      const isDark = newValue === 'true';
-      if (isDark) {
-        this.classList.add('dark');
+      if (newValue === 'true') {
+        this.container.classList.add('darkmode');
       } else {
-        this.classList.remove('dark');
+        this.container.classList.remove('darkmode');
       }
     }
   }
 }
 
 customElements.define('dtmf-input', DtmfInput);
+
